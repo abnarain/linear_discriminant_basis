@@ -118,18 +118,17 @@ def main(classwise_signal_list):
 
 if __name__=='__main__':
 	#two classes each with two samples of data
-	time = np.arange(100, 20, -0.5) / 150.
+	time = np.arange(30, 20, -0.5) / 150.
 	#data1 = np.sin(20 * pylab.log(time)) * np.sign((pylab.log(time)))
 	#data2 = np.sin(20 * pylab.log(time)) * np.cos((pylab.log(time)))
 	amp = 1
-	data1 = amp * np.sin(2*np.pi*300*time)
+	data1 = np.concatenate((amp * np.sin(2*np.pi*300*time),[0]*50),axis=1)
 	data2 = np.concatenate(([0]*50, amp * np.sin(2*np.pi*300*time)),axis=1)
 	from matplotlib import pyplot as plt
 	plt.figure()
 	plt.plot(data1,'b')
 	plt.plot(data2,'r')
 	plt.show()
-	sys.exit(1)
 	wp1 = WaveletPacket(data1, 'sym5', maxlevel=4)
 	wp2 = WaveletPacket(data2, 'sym5', maxlevel=4)
 	WP=[wp1,wp2]
