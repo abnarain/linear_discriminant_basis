@@ -118,41 +118,21 @@ def main(classwise_signal_list):
 
 if __name__=='__main__':
 	#two classes each with two samples of data
-	x = np.arange(100, 20, -0.5) / 150.
-	data1 = np.sin(20 * pylab.log(x)) * np.sign((pylab.log(x)))
-	data2 = np.sin(20 * pylab.log(x)) * np.cos((pylab.log(x)))
-
-        # data1 = 20 * np.sin(x)
-        # data2 = 20 * np.cos(x)
-
+	time = np.arange(100, 20, -0.5) / 150.
+	#data1 = np.sin(20 * pylab.log(time)) * np.sign((pylab.log(time)))
+	#data2 = np.sin(20 * pylab.log(time)) * np.cos((pylab.log(time)))
+	amp = 1
+	data1 = amp * np.sin(2*np.pi*300*time)
+	data2 = np.concatenate(([0]*50, amp * np.sin(2*np.pi*300*time)),axis=1)
+	from matplotlib import pyplot as plt
+	plt.figure()
+	plt.plot(data1,'b')
+	plt.plot(data2,'r')
+	plt.show()
+	sys.exit(1)
 	wp1 = WaveletPacket(data1, 'sym5', maxlevel=4)
 	wp2 = WaveletPacket(data2, 'sym5', maxlevel=4)
 	WP=[wp1,wp2]
-
-        # TODO: Use two signals which are clearly discernible through the
-        # wavelet coefficients, e.g., by starting them at two separate points in
-        # time.
-
-        main([[wp1], [wp2]])
-        print "foo"
-
-	C, max_level= len(WP), 0
-	max_level=min([WP[c].maxlevel for c in range(0,C)])
-			
-	D=np.zeros((max_level+1,2**max_level)) # 5 is temporary
-
-	for c1 in range(0,C):
-		for c2 in range(c1,C):
-			for J in range(1, max_level + 1):
-				nodes1 = WP[c1].get_level(J, "freq")
-				nodes2 = WP[c2].get_level(J, "freq")
-				if len(nodes1)!=len(nodes2):
-					print "impossible"
-					sys.exit(1)
-				for k in range(0, len(nodes1)):
-					item = D[J,k]
-					print len(nodes1[k].data),len(nodes2[k].data)
-					item = item + ldb_measure(abs(nodes1[k].data), abs(nodes2[k].data))
-					print J,k, ": ", item
-					D[J,k] =  item
-	print D
+	
+	main([[wp1], [wp2]])
+	print "foo"
