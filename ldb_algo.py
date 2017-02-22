@@ -1,12 +1,8 @@
 import numpy as np
-import pylab, sys
+import pylab, sys, math
 from pywt import WaveletPacket
+from matplotlib import pyplot as plt
 from scipy import stats
-import sys
-
-num_classes = 2
-max_level = 4
-signal_length = 1024
 
 def ldb_measure(coeffs1,coeffs2):
 	h1,b1= np.histogram(coeffs1,normed=True)
@@ -35,7 +31,7 @@ def gamma_c(signals_c):
 	assert len(signals_c) == 1
 	gamma = np.zeros((max_level+1,2**max_level,signal_length))
 	for j in range(0, max_level):
-		for k in range(0, 2**j):
+		for k in range(0, 2**j-1):
 			signal_arr = get_wavelet_coeffs_jk(signals_c[0], j, k)
 			for l in range(0,len(signal_arr)):
 				gamma[j][k][l] = signal_arr[l]
@@ -101,54 +97,85 @@ def main(classwise_signal_list):
 		gamma_list.append(gamma_c(classwise_signal_list[c]))
 	#print "classwise energy coefficients:"
 	#print gamma_list
+
 	# step 2. initialize A_Jk and delta lists.
+
 	# for all j,k, now
 	# A[j][k] == {(j,k)}
 	A = init_jk_map(max_level, lambda x, y: set([(x,y)]))
-	print "initial tree of A is "
-	print A
+	#print "initial tree of A is "
+	#print A
 	delta = init_jk_map(max_level,
 						lambda x, y: multi_class_discriminant(
 						get_jk_coeff_list(gamma_list, x, y)))
 	# step 3. recurse over tree and check delta values
-	print "max is ", max_level
-	print delta[1][1]
-	for j in range(max_level-2, -1,-1):
-		for k in range(0, 2**max_level):
-			print j,k
-			dd=delta[3][1]
-			print dd
-			new_delta = delta[j+1][k] + delta[j+1][k+1]
-			print "new delta is " ,new_delta
+	for j in range(max_level-2,-1,-1):
+		#for k in range(0, 2**max_level):
+		for k in range(0, 2**j):
+			new_delta = delta[j+1][2*k] + delta[j+1][2*k+1]
 			if delta[j][k] < new_delta:
 				delta[j][k] = new_delta
-				print A[j][k]
-				A[j][k] = A[j+1][k] + A[j+1][k+1]
+				#print "j,k; j+1,k; j+1,k+1 ", A[j][k], A[j+1][k], A[j+1][k+1]
+				new_set=set([])
+				new_set |= A[j+1][2*k]
+				new_set |= A[j+1][2*k+1]
+				A[j][k] = new_set #A[j+1][k] + A[j+1][k+1]
+    # skipping steps 4 and 5. Check the output.
 
-        # skipping steps 4 and 5. Check the output.
-	print "The whole tree of A is "	
-	print A
-	print A[0][0]
+	return A[0][0]
 
-if __name__=='__main__':
-	#two classes each with two samples of data
-	#time = np.arange(30, 20, -0.5) / 150.
-	time = np.array([1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16])
-	#data1 = np.sin(20 * pylab.log(time)) * np.sign((pylab.log(time)))
-	#data2 = np.sin(20 * pylab.log(time)) * np.cos((pylab.log(time)))
-	amp = 1
-	data1 = np.concatenate((amp * np.sin(2*np.pi*300*time),[0]*16),axis=1)
-	data2 = np.concatenate(([0]*16, amp * np.sin(2*np.pi*300*time)),axis=1)
-
-	from matplotlib import pyplot as plt
-	'''
-	plt.figure()
-	plt.plot(data1,'b')
-	plt.plot(data2,'r')
+def plot_wavelet_spectrogram():
+	
+	f,axxr=plt.subplots(3,1)
+	axxr[0].plot(data1,'b')
+	axxr[1].plot(data2,'r')
+	print "node list at root is ", node_list
+	print "signal_length=",signal_length
+	dim =(max_level,signal_length)
+	print "dim is ", dim
+	matrx=np.zeros(dim)
+	for (idx,jdx) in node_list:
+		block_length = signal_length/(2**idx)
+		print "indexes", idx,jdx,";block length",signal_length, block_length
+		print "cell values " ,jdx*block_length,(jdx+1)*block_length
+		for kdx in range((jdx)*(block_length),(jdx+1)*(block_length)):
+			matrx[idx,kdx]=1
+		print "-----"
+	axxr[2].matshow(matrx)
+	
 	plt.show()
-	'''
-	wp1 = WaveletPacket(data1, 'haar', maxlevel=4)
-	wp2 = WaveletPacket(data2, 'haar', maxlevel=4)
+
+def test_data():
+	#time =  np.array([int(i) for i in range(0,64)])	
+	#two classes each with two samples of data
+	time = np.arange(36, 20, -0.5) / 150.
+	#data1 = np.sin(20 * pylab.log(time)) * np.sign((pylab.log(time)))
+	#data2 = [np.sin(20 * pylab.log(time)) * np.cos((pylab.log(time)))]
+	import random
+	amp = 1
+	#data1 = np.concatenate((amp * np.sin(2*np.pi*300*time),[0]*16),axis=1)
+	#data2 = np.concatenate(([0]*16, amp * np.sin(2*np.pi*300*time)),axis=1)
+	#data1 =np.sin(2 * pylab.log(1+time))
+	#data2 = np.concatenate((np.sin(29 * pylab.log(1+time)),np.sin(29 * pylab.log(1+time))), axis=1)
+	#data1 = [0]*time
+	data2 = np.array([.5]*64)
+	data1 = np.concatenate(([1]*12,[.5]*20,[random.random()]*32),axis=1)
+	print len(data1),len(data2)
+	return data1, data2
+	
+if __name__=='__main__':
+	[data1, data2] = test_data()
+	signal_length = len(data1)
+	assert signal_length!= 0 and ((signal_length & (signal_length - 1)) == 0)
+	assert len(data1)==len(data2)
+	
+	max_level = int(math.log(len(data1),2))
+	print "max level is ", max_level
+	num_classes = 2
+	
+	
+	wp1 = WaveletPacket(data1, 'haar', maxlevel=max_level)
+	wp2 = WaveletPacket(data2, 'haar', maxlevel=max_level)
 	WP=[wp1,wp2]
-	main([[wp1], [wp2]])
-	print "foo"
+	node_list=main([[wp1], [wp2]])
+	plot_wavelet_spectrogram()
