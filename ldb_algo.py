@@ -4,7 +4,22 @@ from pywt import WaveletPacket
 from matplotlib import pyplot as plt
 from scipy import stats
 
-def ldb_measure(coeffs1,coeffs2):
+# Gamma coefficient for signals in class c.
+def get_wavelet_coeffs_jk(signal, j, k):
+	return signal.get_level(j, "natural")[k].data
+
+def gamma_c(signals_c):
+	# Test input: the only input is a single signal of that class.
+	assert len(signals_c) == 1
+	gamma = np.zeros((max_level,2**max_level,signal_length))
+	for j in range(0, max_level):
+		for k in range(0, 2**j-1):
+			signal_arr = get_wavelet_coeffs_jk(signals_c[0], j, k)
+			for l in range(0,len(signal_arr)):
+				gamma[j][k][l] = signal_arr[l]
+	return gamma
+
+def kl_measure(coeffs1,coeffs2):
 	h1,b1= np.histogram(coeffs1,normed=True)
 	h1=h1/sum(h1)
 	coeffs1_dist=[]
@@ -22,20 +37,18 @@ def ldb_measure(coeffs1,coeffs2):
 	entr=stats.entropy(h1,h2) #coeffs1_dist,coeffs2_dist)
 	return entr
 
-# Gamma coefficient for signals in class c.
-def get_wavelet_coeffs_jk(signal, j, k):
-	return signal.get_level(j, "natural")[k].data
+def multi_class_discriminant_j_divergence(gamma_jk_list):
+	# gamma_jk_list is a list of gamma_jk vectors for multiple
+	# classes.
+	assert len(gamma_jk_list) == num_classes
+	total_disc = 0.0
+	for c1 in range(0, num_classes):
+		for c2 in range(c1, num_classes):
+			total_disc += kl_measure(
+				gamma_jk_list[c1],
+				gamma_jk_list[c2]) + kl_measure(gamma_jk_list[c2], gamma_jk_list[c1])
+	return total_disc
 
-def gamma_c(signals_c):
-	# Test input: the only input is a single signal of that class.
-	assert len(signals_c) == 1
-	gamma = np.zeros((max_level,2**max_level,signal_length))
-	for j in range(0, max_level):
-		for k in range(0, 2**j-1):
-			signal_arr = get_wavelet_coeffs_jk(signals_c[0], j, k)
-			for l in range(0,len(signal_arr)):
-				gamma[j][k][l] = signal_arr[l]
-	return gamma
 
 def two_number_discriminant(val1, val2):
 	return (val1 - val2)**2
@@ -52,7 +65,8 @@ def class_number_discriminant(gamma_jk_list):
 			gamma_jk_list[c2])
 	return total_disc
 
-def multi_class_discriminant(gamma_jk_list):
+
+def multi_class_discriminant_l2(gamma_jk_list):
 	# gamma_jk_list is a list of gamma_jk vectors for multiple
 	# classes.
 	assert len(gamma_jk_list) == num_classes
@@ -105,7 +119,7 @@ def main(classwise_signal_list):
 	#print "initial tree of A is "
 	print A
 	delta = init_jk_map(max_level,
-						lambda x, y: multi_class_discriminant(
+						lambda x, y: multi_class_discriminant_l2(
 						get_jk_coeff_list(gamma_list, x, y)))
 	# step 3. recurse over tree and check delta values
 	for j in range(max_level-2,-1,-1):
@@ -148,7 +162,7 @@ def test_data():
 	#two classes each with two samples of data
 	time = np.arange(1,9,0.5) #/ 150.
 	#data1 = np.sin(20 * pylab.log(time)) * np.sign((pylab.log(time)))
-	data3 = np.concatenate((np.sin(20 * pylab.log(time)), np.cos(pylab.log(time))),axis=1)
+	#data3 = np.concatenate((np.sin(20 * pylab.log(time)), np.cos(pylab.log(time))),axis=1)
 	amp = -1
 	data1 = np.concatenate((amp * np.sin(2*np.pi*300*time),[0]*16),axis=1)
 	#data1 = np.concatenate(([1]*16,[0]*(time)),axis=1)
@@ -157,11 +171,11 @@ def test_data():
 	#data2 = np.concatenate(([0]*16, amp * np.sin(2*np.pi*300*time)),axis=1)
 	#data1 =np.sin(2 * pylab.log(1+time))
 	#data2 = np.concatenate((np.sin(29 * pylab.log(1+time)),np.sin(29 * pylab.log(1+time))), axis=1)
-	#data3 = np.array([0]*32)
+	data3 = np.array([0]*32)
 	#data1 = np.array([0]*32)
 	#data1 = np.concatenate(([32]*12,[.5]*20,[5]*32),axis=1)
 	print len(data1),len(data2)
-	return data1, data2, data3
+	return [data1, data2, data3]
 	
 if __name__=='__main__':
 	classes=[data1, data2,data3] = test_data()
