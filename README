@@ -1,0 +1,4 @@
+Feb 23 Test comments with l1_norm.png and l2_norm.png outputs
+Changing the distance metric between two classes changes the output of basis returned by the algorithm.
+L1 norm is pretty bad (and not even suggested by the paper)
+L2 norm is making more sense with nodes near function variability are lighting up in the output.
