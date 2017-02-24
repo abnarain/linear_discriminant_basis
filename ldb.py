@@ -97,7 +97,7 @@ def get_jk_coeff_list(gamma_list, j, k):
 	return jk_list
 
 # main function
-def main(classwise_signal_list):
+def ldb(classwise_signal_list):
 	assert len(classwise_signal_list) == num_classes
 
 	#print "The input signals are:"
@@ -189,5 +189,5 @@ if __name__=='__main__':
 	WP= []
 	for i in range(0,num_classes):
 		WP.append([WaveletPacket(classes[i], 'db1', maxlevel=max_level)])
-	node_list=main(WP)
+	node_list=ldb(WP)
 	plot_wavelet_spectrogram()
