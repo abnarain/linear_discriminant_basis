@@ -3,7 +3,7 @@ import pylab, sys, math
 from pywt import WaveletPacket
 from matplotlib import pyplot as plt
 from scipy import stats
-
+num_classes=2
 # Gamma coefficient for signals in class c.
 def get_wavelet_coeffs_jk(signal, j, k):
 	return signal.get_level(j, "natural")[k].data
@@ -116,11 +116,11 @@ def ldb(classwise_signal_list):
 	# for all j,k, now
 	# A[j][k] == {(j,k)}
 	A = init_jk_map(max_level, lambda x, y: set([(x,y)]))
-	#print "initial tree of A is "
+	print "initial tree of A is "
 	print A
 	delta = init_jk_map(max_level,
-						lambda x, y: multi_class_discriminant_l2(
-						get_jk_coeff_list(gamma_list, x, y)))
+			    lambda x, y: multi_class_discriminant_l2(
+			get_jk_coeff_list(gamma_list, x, y)))
 	# step 3. recurse over tree and check delta values
 	for j in range(max_level-2,-1,-1):
 		#for k in range(0, 2**max_level):
@@ -135,6 +135,17 @@ def ldb(classwise_signal_list):
 				A[j][k] = new_set #A[j+1][k] + A[j+1][k+1]
 				print A[j][k], " ",
     # skipping steps 4 and 5. Check the output.
+	print "\nraw delta values\n"
+	print delta
+	max_indices_list=max_indices(delta)
+
+	'''
+	print "\ndelta values are\n",
+	for x in delta:
+		print "\nx is: ",x
+		for xx in delta[x]:
+			print "delta[x] ", xx, delta[x][xx]
+	'''
 	return A[0][0]
 
 def plot_wavelet_spectrogram():
@@ -142,41 +153,39 @@ def plot_wavelet_spectrogram():
 	f,axxr=plt.subplots(num_classes+1,1)
 	for i in range(0, num_classes):
 		axxr[i].plot(classes[i],c[i])
-	print "node list at root is ", node_list
-	print "signal_length=",signal_length
 	dim =(max_level,signal_length)
-	print "dim is ", dim
 	matrx=np.zeros(dim)
 	for (idx,jdx) in node_list:
 		block_length = signal_length/(2**idx)
-		print "indexes", idx,jdx,";block length",signal_length, block_length
-		print "cell values " ,jdx*block_length,(jdx+1)*block_length
 		for kdx in range((jdx)*(block_length),(jdx+1)*(block_length)):
 			matrx[idx,kdx]=1
-		print "-----"
 	axxr[num_classes].matshow(matrx)
-	plt.show()
+	#plt.show()
 
 def test_data():
 	#time =  np.array([int(i) for i in range(0,64)])	
 	#two classes each with two samples of data
-	time = np.arange(1,9,0.5) #/ 150.
+	#time = np.arange(1,2041,0.5) #/ 150.
+	time = np.arange(1,25,0.5) #/ 150.
 	#data1 = np.sin(20 * pylab.log(time)) * np.sign((pylab.log(time)))
 	#data3 = np.concatenate((np.sin(20 * pylab.log(time)), np.cos(pylab.log(time))),axis=1)
 	amp = -1
-	data1 = np.concatenate((amp * np.sin(2*np.pi*300*time),[0]*16),axis=1)
+	data1 = np.concatenate((amp * np.sin(2*np.pi*300*time),[0]*16),axis=0)
+	print data1
 	#data1 = np.concatenate(([1]*16,[0]*(time)),axis=1)
 	#data2 = np.concatenate(([0]*16,[1]*time),axis=1)
-	data2 = np.concatenate(([0]*16,amp * np.sin(2*np.pi*16*time)),axis=1)
+	data2 = np.concatenate(([0]*16,amp * np.sin(2*np.pi*16*time)),axis=0)
+	print data2
 	#data2 = np.concatenate(([0]*16, amp * np.sin(2*np.pi*300*time)),axis=1)
 	#data1 =np.sin(2 * pylab.log(1+time))
 	#data2 = np.concatenate((np.sin(29 * pylab.log(1+time)),np.sin(29 * pylab.log(1+time))), axis=1)
 	data3 = np.array([0]*32)
 	#data1 = np.array([0]*32)
 	#data1 = np.concatenate(([32]*12,[.5]*20,[5]*32),axis=1)
-	print len(data1),len(data2)
+	print len(data1),len(data2),len(data3)
 	return [data1, data2, data3]
-	
+
+'''
 if __name__=='__main__':
 	classes=[data1, data2,data3] = test_data()
 	signal_length = len(data1)
@@ -190,4 +199,25 @@ if __name__=='__main__':
 	for i in range(0,num_classes):
 		WP.append([WaveletPacket(classes[i], 'db1', maxlevel=max_level)])
 	node_list=ldb(WP)
-	plot_wavelet_spectrogram()
+	#plot_wavelet_spectrogram()
+'''
+
+def ldb_input(X_data):
+	classes=X_data
+	signal_length = len(X_data[0][0])
+	print len(X_data[0][0]),len(X_data[1][0])
+	assert signal_length!= 0 and ((signal_length & (signal_length - 1)) == 0)
+	assert len(X_data[0])==len(X_data[1])
+	max_level = 5 #int(math.log(len(data1),2))
+	num_classes = len(classes)
+	print "max level is ", max_level, "num of classes", num_classes
+	WP= []
+	for j in range(0, len(classes[0])):
+		WPc=[]
+		for i in range(0,num_classes):
+			WPc.append([WaveletPacket(classes[i][j], 'db1', maxlevel=max_level)])
+		node_list=ldb(WPc)
+		#get the coefficients of each of the data corresponding to node list
+		#make an array of it and return it to LDA algorithm for classification
+
+	#plot_wavelet_spectrogram()
