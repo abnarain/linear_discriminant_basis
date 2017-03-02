@@ -1,17 +1,27 @@
 import numpy as np
+from collections import defaultdict
 import scipy, getopt, sys, os, pywt, pylab, itertools,math
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.cross_validation import train_test_split,KFold, cross_val_score, StratifiedKFold
 from ldb import *
+from sklearn.preprocessing import label_binarize, normalize
+from itertools import cycle
+from numpy import interp
+import matplotlib
+from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score, zero_one_loss, precision_recall_curve, average_precision_score, confusion_matrix, roc_curve, auc
+
+LEGEND_PROP = matplotlib.font_manager.FontProperties(size=6)
+colors = cycle(['cyan', 'indigo', 'seagreen', 'yellow', 'blue', 'darkorange', 'navy', 'turquoise', 'darkorange', 'cornflowerblue', 'teal'])
+
 
 def mult_kfold_roc(X, y, classifier, title, class_names, filename):
     K=10
     print "I am in kfold"
     cv = StratifiedKFold(y,n_folds=K)
     # Binarize the output
-    print len(y)
-    y = label_binarize(y, classes=[0, 1, 2,3,4])
-    print len(y)
+    print "y before binarize ", y
+    y = label_binarize(y, classes=[0, 1]) #4,3,4])
+    print "y is " , y
     n_classes = y.shape[1]
     print n_classes
     # Compute Precision-Recall and plot curve
@@ -31,12 +41,14 @@ def mult_kfold_roc(X, y, classifier, title, class_names, filename):
             print "shape of column is ", i[:,1].shape
             y_s= np.c_[y_s, i[:,1]]
             y_score=y_s
-
         '''
         for i in range(n_classes):
             fpr_, tpr_, _ = roc_curve(y_test[:, i], y_score[:, i])
             tpr[i].append(tpr_)
             fpr[i].append(fpr_)
+        '''    
+            print y_test
+            print y_pred
             avg_prec_s[i] +=  precision_score(y_test[:, i], y_pred[:, i], average="macro")
             avg_class_acc_s[i] += classifier.score(X_test, y_test)
             avg_rec_s[i] +=  recall_score(y_test[:, i], y_pred[:, i], average="macro")
@@ -45,6 +57,7 @@ def mult_kfold_roc(X, y, classifier, title, class_names, filename):
 
     for i in range(n_classes):
         print "CLASS ", i, "f1 score", avg_f1_s[i]/K*100, "Prec ", 100*avg_prec_s[i]/K, "Rec ", 100*avg_rec_s[i]/K, "Acc ", 100*avg_class_acc_s[i]/K
+        '''
     fig= plt.figure()
     ax1=fig.add_subplot(111)
     overall_tpr=[]
@@ -122,7 +135,7 @@ def data_segmentation(train_files,fs,period):
     print "after",  period
     for tf in train_files:
         #[x,y, mag, phase,z] = filereader(tf,int(fs),2,2.48)
-        [x,y, mag, phase,z] = filereader(tf,int(fs), 1,1.7)
+        [x,y, mag, phase,z] = filereader(tf,int(fs),0,4.4)
         X, Y=[], []
         for subset_idx in range(0,len(mag)-period, period):
             c +=1
@@ -170,6 +183,7 @@ def segmentation_period(train_files,fs):
     return period
 
 def lda(X,y):
+    print "running lda"
     clf=LinearDiscriminantAnalysis(n_components=None, priors=None, shrinkage=None,
                                    solver='svd', store_covariance=False, tol=0.0001)
     mult_kfold_roc(X, y, clf, 'roc curve', ['compute','udp'], 'lda_analysis')
@@ -210,13 +224,22 @@ def main(argv):
     #period= segmentation_period(train_files,fs)
     #period =87048
     period =4096
-
+    #[[class 1 samples],[class 2 samples]]
     [X_sampled_data,Y_classes] = data_segmentation(train_files,fs,period)
-    coeffs= ldb_input(X_sampled_data)
+    coeffs= ldb_main(X_sampled_data)
     X_coeffs =np.array(coeffs)
     Y_classes=np.array(Y_classes)
-    lda(X_coeffs,Y_classes)
+    print "old shape" ,X_coeffs.shape, Y_classes.shape
+    print Y_classes
+    Y_classes=   np.concatenate(Y_classes,axis=0)
+    X_coeffs =   np.concatenate(X_coeffs,axis=0)
+    print "new classes"
+    print Y_classes
+    print "new shape " ,X_coeffs.shape, Y_classes.shape
+    lda(X_coeffs,Y_classes.ravel())
 
+
+def shitda(X,y):
     '''
     for family in pywt.families():
         for wavelet in pywt.wavelist(family):
